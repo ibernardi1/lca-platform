@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { existingLCAs } from "../data/mockData";
+import { getEmissionFactor } from "../utils/epaApi";
 
 function formatTotalFootprint(emissions, units) {
   const total = (emissions * units) / 1000;
@@ -25,6 +26,11 @@ export default function LCADetail() {
   const navigate = useNavigate();
   const lca = existingLCAs.find((l) => l.id === parseInt(id));
   const [selected, setSelected] = useState([]);
+  const [epaData, setEpaData] = useState(null);
+
+  useEffect(() => {
+    if (lca) getEmissionFactor(lca.material).then(setEpaData);
+  }, [lca?.material]);
 
   if (!lca) return <div style={{ padding: "2rem" }}>Product not found.</div>;
 
@@ -60,14 +66,11 @@ export default function LCADetail() {
       <div style={{ padding: "2rem 2.5rem", maxWidth: "1000px", margin: "0 auto" }}>
 
         {/* Back */}
-        <button
-          onClick={() => navigate("/")}
-          style={{
-            background: "none", border: "none", color: "#2d6a4f",
-            cursor: "pointer", fontSize: "0.9rem", marginBottom: "1.2rem",
-            padding: 0, fontWeight: "600"
-          }}
-        >
+        <button onClick={() => navigate("/")} style={{
+          background: "none", border: "none", color: "#2d6a4f",
+          cursor: "pointer", fontSize: "0.9rem", marginBottom: "1.2rem",
+          padding: 0, fontWeight: "600"
+        }}>
           ← Back to Dashboard
         </button>
 
@@ -91,7 +94,6 @@ export default function LCADetail() {
             </span>
           </div>
 
-          {/* Stats Row */}
           <div style={{
             display: "flex", gap: "2rem", marginTop: "1.2rem",
             paddingTop: "1.2rem", borderTop: "1px solid #f0f0f0"
@@ -121,7 +123,28 @@ export default function LCADetail() {
           padding: "1.5rem", marginBottom: "1.5rem",
           border: "1px solid #e8e8e8", boxShadow: "0 1px 4px rgba(0,0,0,0.06)"
         }}>
-          <h2 style={{ margin: "0 0 1.2rem", fontSize: "1rem", color: "#1b4332" }}>Emissions Breakdown by Lifecycle Stage</h2>
+          <h2 style={{ margin: "0 0 1rem", fontSize: "1rem", color: "#1b4332" }}>
+            Emissions Breakdown by Lifecycle Stage
+          </h2>
+
+          {epaData && (
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: "0.5rem",
+              background: epaData.live ? "#f0f7f4" : "#f8f8f8",
+              border: `1px solid ${epaData.live ? "#2d6a4f" : "#ddd"}`,
+              borderRadius: "20px", padding: "0.3rem 0.8rem",
+              fontSize: "0.75rem", marginBottom: "1.2rem",
+              color: epaData.live ? "#2d6a4f" : "#888"
+            }}>
+              <span style={{ fontWeight: "700" }}>
+                {epaData.live ? "● LIVE" : "○"}
+              </span>
+              <span>
+                {epaData.source} · {lca.material}: <strong>{epaData.factor} kg CO₂e/kg</strong>
+              </span>
+            </div>
+          )}
+
           {lca.emissionsBreakdown.map((stage) => (
             <div key={stage.stage} style={{ marginBottom: "0.8rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "0.3rem" }}>
@@ -154,7 +177,6 @@ export default function LCADetail() {
             Select scenarios to model their combined impact
           </p>
 
-          {/* Table Header */}
           <div style={{
             display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 40px",
             gap: "0.5rem", padding: "0.5rem 0.8rem",
@@ -201,7 +223,6 @@ export default function LCADetail() {
             </div>
           ))}
 
-          {/* Scenario Result */}
           {selected.length > 0 && (
             <div style={{
               marginTop: "1.2rem", padding: "1rem 1.2rem",
